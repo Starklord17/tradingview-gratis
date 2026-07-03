@@ -20,7 +20,8 @@ export type DrawingTool =
   | "trendline"
   | "fibonacci"
   | "measure"
-  | "eraser";
+  | "eraser"
+  | "replay_jump";
 
 export interface Point {
   time: number; // UTC timestamp in seconds

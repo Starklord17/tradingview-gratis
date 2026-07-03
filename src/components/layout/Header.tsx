@@ -1,16 +1,20 @@
 "use client";
 
-import { Code2, Zap, Sparkles } from "lucide-react";
+import { Code2, Zap, Sparkles, History } from "lucide-react";
 import { SymbolSelector } from "@/components/chart/SymbolSelector";
 import { TimeframeSelector } from "@/components/chart/TimeframeSelector";
 import { IndicatorMenu } from "@/components/chart/IndicatorMenu";
 import { Separator } from "@/components/ui/separator";
 import { useChartStore } from "@/lib/store/chart-store";
+import { useReplayStore } from "@/lib/store/replay-store";
 import { cn } from "@/lib/utils";
 
 export function Header() {
   const isAIPanelOpen = useChartStore((s) => s.isAIPanelOpen);
   const setAIPanelOpen = useChartStore((s) => s.setAIPanelOpen);
+
+  const isReplayActive = useReplayStore((s) => s.isReplayActive);
+  const exitReplay = useReplayStore((s) => s.exitReplay);
 
   return (
     <header className="flex h-12 items-center justify-between border-b border-tv-border bg-tv-panel px-3 select-none">
@@ -32,6 +36,25 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            if (isReplayActive) {
+              exitReplay();
+            } else {
+              useReplayStore.setState({ isReplayActive: true });
+            }
+          }}
+          className={cn(
+            "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-tv-blue",
+            isReplayActive
+              ? "bg-tv-yellow/20 text-tv-yellow"
+              : "text-tv-text-dim hover:bg-tv-panel-hover hover:text-tv-text"
+          )}
+        >
+          <History className="h-3.5 w-3.5" />
+          <span>Simulación</span>
+        </button>
+        <Separator orientation="vertical" className="h-5 bg-tv-border" />
         <button
           onClick={() => setAIPanelOpen(!isAIPanelOpen)}
           className={cn(
