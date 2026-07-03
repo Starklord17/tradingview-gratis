@@ -27,6 +27,8 @@ import { MeasureOverlay } from "./MeasureOverlay";
 import { DrawingOverlay } from "./DrawingOverlay";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { type Drawing, type Point } from "@/lib/store/chart-store";
+import { Bell, X } from "lucide-react";
+import { useAlertStore, type Alert } from "@/lib/store/alert-store";
 
 interface MeasurePoint {
   time: number;
@@ -154,6 +156,42 @@ export function PriceChart({ symbol, timeframe }: Props) {
   const [renderTick, setRenderTick] = useState(0);
   const measureRef = useRef(measure);
   measureRef.current = measure;
+
+  // Alerts store and notifications state
+  const checkAlerts = useAlertStore((s) => s.checkAlerts);
+  const setCurrentPrice = useAlertStore((s) => s.setCurrentPrice);
+
+  interface NotificationItem {
+    id: string;
+    symbol: string;
+    price: number;
+    condition: "above" | "below";
+    actualPrice: number;
+  }
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  const triggerAlertTelegram = async (alert: Alert, actualPrice: number) => {
+    try {
+      const res = await fetch("/api/alerts/notify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          symbol: alert.symbol,
+          price: alert.price,
+          condition: alert.condition,
+          actualPrice,
+          chatId: useAlertStore.getState().telegramChatId,
+        }),
+      });
+      if (!res.ok) {
+        console.error("Failed to send Telegram alert notification");
+      }
+    } catch (error) {
+      console.error("Error sending Telegram alert notification:", error);
+    }
+  };
 
   const [activeDrawing, setActiveDrawing] = useState<{
     type: "trendline" | "fibonacci";
@@ -830,6 +868,27 @@ export function PriceChart({ symbol, timeframe }: Props) {
               value: k.close,
               pct: prev && prev.close !== 0 ? ((k.close - prev.close) / prev.close) * 100 : 0,
             });
+
+            // Alert system check
+            setCurrentPrice(k.close);
+            checkAlerts(symbol, k.close, (triggeredAlert) => {
+              // 1. Add visual notification toast
+              const newNotif: NotificationItem = {
+                id: Math.random().toString(),
+                symbol: triggeredAlert.symbol,
+                price: triggeredAlert.price,
+                condition: triggeredAlert.condition,
+                actualPrice: k.close,
+              };
+              setNotifications((prev) => [newNotif, ...prev]);
+
+              setTimeout(() => {
+                setNotifications((prev) => prev.filter((n) => n.id !== newNotif.id));
+              }, 6000);
+
+              // 2. Trigger Telegram API notification
+              triggerAlertTelegram(triggeredAlert, k.close);
+            });
           },
         });
       } catch (e) {
@@ -843,7 +902,7 @@ export function PriceChart({ symbol, timeframe }: Props) {
       cancelled = true;
       if (unsub) unsub();
     };
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, checkAlerts, setCurrentPrice]);
 
   const greenOrRed = (n: number) =>
     n >= 0 ? "text-tv-green" : "text-tv-red";
@@ -1065,6 +1124,35 @@ export function PriceChart({ symbol, timeframe }: Props) {
           />
         </div>
       )}
+
+      {/* Visual Alerts Toasts */}
+      <div className="absolute right-4 top-16 z-50 flex flex-col gap-2 pointer-events-none select-none">
+        {notifications.map((n) => (
+          <div
+            key={n.id}
+            className="flex w-72 items-center gap-3 rounded-lg border border-tv-green/30 bg-tv-panel/95 p-3 shadow-xl backdrop-blur-md pointer-events-auto border-l-4 border-l-tv-green animate-in fade-in slide-in-from-right-4 duration-300"
+          >
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-tv-green/15 text-tv-green shrink-0">
+              <Bell className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold text-tv-text text-xs">
+                ¡Alerta Activada! {n.symbol.toUpperCase()}
+              </div>
+              <div className="text-[10px] text-tv-text-dim mt-0.5 leading-normal">
+                El precio cruzó {n.condition === "above" ? "hacia arriba" : "hacia abajo"} los ${n.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}.
+              </div>
+            </div>
+            <button
+              onClick={() => setNotifications((prev) => prev.filter((item) => item.id !== n.id))}
+              className="text-tv-text-muted hover:text-tv-text ml-2 p-0.5 rounded hover:bg-tv-panel-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-tv-blue"
+              aria-label="Cerrar notificación"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

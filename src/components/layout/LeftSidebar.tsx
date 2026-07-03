@@ -1,8 +1,9 @@
 "use client";
 
-import { MousePointer2, Minus, Ruler, Trash2, Lock, TrendingUp, Grid3X3, Eraser } from "lucide-react";
+import { MousePointer2, Minus, Ruler, Trash2, Lock, TrendingUp, Grid3X3, Eraser, Bell } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useChartStore, type DrawingTool } from "@/lib/store/chart-store";
+import { useAlertStore } from "@/lib/store/alert-store";
 import { cn } from "@/lib/utils";
 
 interface ToolDef {
@@ -56,6 +57,9 @@ export function LeftSidebar() {
   const clearPriceLines = useChartStore((s) => s.clearPriceLines);
   const clearDrawings = useChartStore((s) => s.clearDrawings);
   const symbol = useChartStore((s) => s.symbol);
+  
+  const isAlertsPanelOpen = useAlertStore((s) => s.isAlertsPanelOpen);
+  const setAlertsPanelOpen = useAlertStore((s) => s.setAlertsPanelOpen);
 
   return (
     <aside className="flex w-11 flex-col items-center gap-0.5 border-r border-tv-border bg-tv-panel py-1.5">
@@ -101,6 +105,27 @@ export function LeftSidebar() {
           <div className="font-medium">Borrar dibujos</div>
           <div className="mt-0.5 text-[10px] text-tv-text-muted">
             Limpia las líneas de este símbolo
+          </div>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          onClick={() => setAlertsPanelOpen(!isAlertsPanelOpen)}
+          aria-label="Alertas"
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-tv-panel-hover",
+            isAlertsPanelOpen
+              ? "bg-tv-blue/15 text-tv-blue"
+              : "text-tv-text-muted hover:text-tv-text"
+          )}
+        >
+          <Bell className="h-4 w-4" />
+        </TooltipTrigger>
+        <TooltipContent side="right" className="text-xs">
+          <div className="font-medium">Alertas de precio</div>
+          <div className="mt-0.5 text-[10px] text-tv-text-muted">
+            Configurar y ver alertas
           </div>
         </TooltipContent>
       </Tooltip>
