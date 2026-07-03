@@ -16,6 +16,7 @@ import { fetchKlines } from "@/lib/binance/rest";
 import { getBinanceWS } from "@/lib/binance/ws";
 import { ema, rsi, macd, bollingerBands, superTrend } from "@/lib/indicators";
 import type { Candle, Timeframe } from "@/lib/binance/types";
+import { useReplayStore } from "@/lib/store/replay-store";
 import {
   INDICATOR_COLORS,
   useChartStore,
@@ -132,6 +133,10 @@ export function PriceChart({ symbol, timeframe }: Props) {
   const addDrawing = useChartStore((s) => s.addDrawing);
   const setTool = useChartStore((s) => s.setTool);
   const selectedDrawingId = useChartStore((s) => s.selectedDrawingId);
+
+  const isReplayActive = useReplayStore((s) => s.isReplayActive);
+  const replayIndex = useReplayStore((s) => s.replayIndex);
+  const allCandles = useReplayStore((s) => s.allCandles);
   const setSelectedDrawingId = useChartStore((s) => s.setSelectedDrawingId);
   const deleteDrawing = useChartStore((s) => s.deleteDrawing);
 
@@ -347,6 +352,19 @@ export function PriceChart({ symbol, timeframe }: Props) {
       if (!param.point || !candleSeriesRef.current) return;
       const price = candleSeriesRef.current.coordinateToPrice(param.point.y);
       if (price === null || !isFinite(price)) return;
+
+      if (toolRef.current === "replay_jump") {
+        if (!param.time) return;
+        const time = Number(param.time);
+        const { allCandles, setReplayIndex } = useReplayStore.getState();
+        const index = allCandles.findIndex((k) => k.time === time);
+        if (index !== -1) {
+          setReplayIndex(index);
+        }
+        setToolRef.current("cursor");
+        return;
+      }
+
       if (toolRef.current === "hline") {
         if (!param.time) return;
         const time = Number(param.time);
@@ -678,6 +696,13 @@ export function PriceChart({ symbol, timeframe }: Props) {
     setAlertStoreLastValues(lastValues as any);
   }, [lastValues, setAlertStoreLastValues]);
 
+  // Initialize Replay store with chart candles if activated
+  useEffect(() => {
+    if (isReplayActive && allCandles.length === 0 && candlesRef.current.length > 0) {
+      useReplayStore.getState().enterReplay(candlesRef.current);
+    }
+  }, [isReplayActive, allCandles]);
+
   // Recompute indicators when config changes (periods)
   useEffect(() => {
     updateEMAs();
@@ -698,6 +723,52 @@ export function PriceChart({ symbol, timeframe }: Props) {
   useEffect(() => {
     updateSuperTrend();
   }, [config.supertrendPeriod, config.supertrendMultiplier]);
+
+  // Synchronize chart with Replay index slices
+
+  useEffect(() => {
+    if (!isReplayActive || replayIndex === -1 || allCandles.length === 0) return;
+
+    // Slice up to replayIndex
+    const sliced = allCandles.slice(0, replayIndex + 1);
+
+    // Update ref so indicators calculations use the sliced history
+    candlesRef.current = sliced;
+
+    // Set candlestick series data
+    if (candleSeriesRef.current) {
+      candleSeriesRef.current.setData(
+        sliced.map((k) => ({
+          time: k.time as UTCTimestamp,
+          open: k.open,
+          high: k.high,
+          low: k.low,
+          close: k.close,
+        })),
+      );
+    }
+    if (volumeSeriesRef.current) {
+      volumeSeriesRef.current.setData(
+        sliced.map((k) => ({
+          time: k.time as UTCTimestamp,
+          value: k.volume,
+          color: k.close >= k.open ? `${TV_COLORS.green}66` : `${TV_COLORS.red}66`,
+        })),
+      );
+    }
+
+    // Re-calculate indicators
+    updateEMAs();
+    updateRSI();
+    updateMACD();
+    updateBB();
+    updateSuperTrend();
+
+    // Sync current price for alerts & AI panel
+    if (sliced.length > 0) {
+      setCurrentPrice(sliced[sliced.length - 1].close);
+    }
+  }, [isReplayActive, replayIndex, allCandles, setCurrentPrice]);
 
   // Sync price lines from store to the candle series
   useEffect(() => {
@@ -896,6 +967,9 @@ export function PriceChart({ symbol, timeframe }: Props) {
 
   // Load historical data + subscribe live
   useEffect(() => {
+    if (isReplayActive) {
+      return;
+    }
     let unsub: (() => void) | null = null;
     let cancelled = false;
 
@@ -1015,7 +1089,7 @@ export function PriceChart({ symbol, timeframe }: Props) {
       cancelled = true;
       if (unsub) unsub();
     };
-  }, [symbol, timeframe, checkAlerts, setCurrentPrice]);
+  }, [symbol, timeframe, checkAlerts, setCurrentPrice, isReplayActive]);
 
   const greenOrRed = (n: number) =>
     n >= 0 ? "text-tv-green" : "text-tv-red";
