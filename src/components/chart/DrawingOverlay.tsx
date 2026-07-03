@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useChartStore, type Drawing, type Point } from "@/lib/store/chart-store";
-import type { IChartApi, ISeriesApi, UTCTimestamp, Coordinate, Time } from "lightweight-charts";
+import type { IChartApi, ISeriesApi, UTCTimestamp, Coordinate, Time, Logical } from "lightweight-charts";
 
 interface Props {
   chart: IChartApi | null;
@@ -107,34 +107,65 @@ export function DrawingOverlay({
 
       if (aX === null || bX === null || aY === null || bY === null) return;
 
-      let newAX = aX as number;
-      let newAY = aY as number;
-      let newBX = bX as number;
-      let newBY = bY as number;
+      let newTimeA: Time | null = null;
+      let newTimeB: Time | null = null;
+      let newPriceA: number | null = null;
+      let newPriceB: number | null = null;
 
-      if (dragState.target === "a") {
-        newAX += dx;
-        newAY += dy;
-      } else if (dragState.target === "b") {
-        newBX += dx;
-        newBY += dy;
-      } else if (dragState.target === "all") {
-        newAX += dx;
-        newAY += dy;
-        newBX += dx;
-        newBY += dy;
+      if (dragState.target === "all") {
+        // Rigid body drag (prevents stretching/wobbling by applying logical index offsets)
+        const startLogicalA = ts.coordinateToLogical(aX as Coordinate);
+        const startLogicalB = ts.coordinateToLogical(bX as Coordinate);
+        const newAX = (aX + dx) as Coordinate;
+        const currentLogicalA = ts.coordinateToLogical(newAX);
+
+        if (startLogicalA !== null && startLogicalB !== null && currentLogicalA !== null) {
+          const deltaLogical = Math.round(currentLogicalA - startLogicalA);
+          const newLogicalA = (startLogicalA + deltaLogical) as unknown as Logical;
+          const newLogicalB = (startLogicalB + deltaLogical) as unknown as Logical;
+
+          const coordA = ts.logicalToCoordinate(newLogicalA);
+          const coordB = ts.logicalToCoordinate(newLogicalB);
+
+          if (coordA !== null) newTimeA = ts.coordinateToTime(coordA);
+          if (coordB !== null) newTimeB = ts.coordinateToTime(coordB);
+        }
+
+        const newAY = (aY + dy) as Coordinate;
+        const tempPriceA = candleSeries.coordinateToPrice(newAY);
+        if (tempPriceA !== null) {
+          const deltaPrice = tempPriceA - dragState.startA.price;
+          newPriceA = dragState.startA.price + deltaPrice;
+          newPriceB = dragState.startB.price + deltaPrice;
+        }
+      } else {
+        // Dragging individual handles
+        if (dragState.target === "a") {
+          const newAX = (aX + dx) as Coordinate;
+          const newAY = (aY + dy) as Coordinate;
+          newTimeA = ts.coordinateToTime(newAX);
+          newPriceA = candleSeries.coordinateToPrice(newAY);
+          newTimeB = dragState.startB.time as unknown as Time;
+          newPriceB = dragState.startB.price;
+        } else {
+          const newBX = (bX + dx) as Coordinate;
+          const newBY = (bY + dy) as Coordinate;
+          newTimeA = dragState.startA.time as unknown as Time;
+          newPriceA = dragState.startA.price;
+          newTimeB = ts.coordinateToTime(newBX);
+          newPriceB = candleSeries.coordinateToPrice(newBY);
+        }
       }
 
-      // Convert pixel coordinates back to chart values
-      let newTimeA = ts.coordinateToTime(newAX as Coordinate);
-      const newPriceA = candleSeries.coordinateToPrice(newAY as Coordinate);
-      let newTimeB = ts.coordinateToTime(newBX as Coordinate);
-      const newPriceB = candleSeries.coordinateToPrice(newBY as Coordinate);
-
-      // If infinite horizontal line, preserve the original time anchor
+      // Special case for horizontal lines (time is fixed to original start anchors)
       if (dragState.type === "hline") {
         newTimeA = dragState.startA.time as unknown as Time;
         newTimeB = dragState.startB.time as unknown as Time;
+        if (dragState.target === "a" || dragState.target === "all") {
+          newPriceB = newPriceA;
+        } else {
+          newPriceA = newPriceB;
+        }
       }
 
       if (
@@ -279,7 +310,8 @@ export function DrawingOverlay({
             y={boxY}
             width={boxW}
             height={boxH}
-            fill="transparent"
+            fill="white"
+            fillOpacity={0}
             className="cursor-pointer"
             style={{ pointerEvents: tool === "cursor" || tool === "eraser" ? "auto" : "none" }}
             onClick={(e) => handleElementClick(e, d.id)}
