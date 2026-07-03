@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useChartStore, type Drawing, type Point } from "@/lib/store/chart-store";
 import type { IChartApi, ISeriesApi, UTCTimestamp, Coordinate, Time, Logical } from "lightweight-charts";
+
+import type { Candle } from "@/lib/binance/types";
 
 interface Props {
   chart: IChartApi | null;
@@ -14,6 +16,7 @@ interface Props {
     b: Point;
   } | null;
   renderTick?: number; // Used to trigger re-renders on zoom/pan
+  candles: Candle[];
 }
 
 const FIB_LEVELS = [
@@ -31,6 +34,7 @@ export function DrawingOverlay({
   candleSeries,
   symbol,
   activeDrawing,
+  candles,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const drawings = useChartStore((s) => s.drawings);
@@ -39,6 +43,33 @@ export function DrawingOverlay({
   const deleteDrawing = useChartStore((s) => s.deleteDrawing);
   const selectedDrawingId = useChartStore((s) => s.selectedDrawingId);
   const setSelectedDrawingId = useChartStore((s) => s.setSelectedDrawingId);
+
+  // Safely estimate time for a coordinate, supporting past/future margins
+  const estimateTime = useCallback((x: Coordinate): Time | null => {
+    if (!chart || candles.length === 0) return null;
+    const ts = chart.timeScale();
+    const time = ts.coordinateToTime(x);
+    if (time !== null) return time;
+
+    const logical = ts.coordinateToLogical(x);
+    if (logical === null) return null;
+
+    // Find logical index of the last loaded candle
+    const lastCandle = candles[candles.length - 1];
+    const lastCoord = ts.timeToCoordinate(lastCandle.time as UTCTimestamp);
+    if (lastCoord === null) return null;
+    const lastLogical = ts.coordinateToLogical(lastCoord);
+    if (lastLogical === null) return null;
+
+    // Calculate average interval in seconds
+    let interval = 60;
+    if (candles.length > 1) {
+      interval = (Number(lastCandle.time) - Number(candles[0].time)) / (candles.length - 1);
+    }
+
+    const delta = logical - lastLogical;
+    return (Number(lastCandle.time) + Math.round(delta) * interval) as unknown as Time;
+  }, [chart, candles]);
 
   const [dragState, setDragState] = useState<{
     id: string;
@@ -127,8 +158,8 @@ export function DrawingOverlay({
           const coordA = ts.logicalToCoordinate(newLogicalA);
           const coordB = ts.logicalToCoordinate(newLogicalB);
 
-          if (coordA !== null) newTimeA = ts.coordinateToTime(coordA);
-          if (coordB !== null) newTimeB = ts.coordinateToTime(coordB);
+          if (coordA !== null) newTimeA = estimateTime(coordA);
+          if (coordB !== null) newTimeB = estimateTime(coordB);
         }
 
         const newAY = (aY + dy) as Coordinate;
@@ -143,7 +174,7 @@ export function DrawingOverlay({
         if (dragState.target === "a") {
           const newAX = (aX + dx) as Coordinate;
           const newAY = (aY + dy) as Coordinate;
-          newTimeA = ts.coordinateToTime(newAX);
+          newTimeA = estimateTime(newAX);
           newPriceA = candleSeries.coordinateToPrice(newAY);
           newTimeB = dragState.startB.time as unknown as Time;
           newPriceB = dragState.startB.price;
@@ -152,7 +183,7 @@ export function DrawingOverlay({
           const newBY = (bY + dy) as Coordinate;
           newTimeA = dragState.startA.time as unknown as Time;
           newPriceA = dragState.startA.price;
-          newTimeB = ts.coordinateToTime(newBX);
+          newTimeB = estimateTime(newBX);
           newPriceB = candleSeries.coordinateToPrice(newBY);
         }
       }
@@ -194,7 +225,7 @@ export function DrawingOverlay({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [dragState, chart, candleSeries, updateDrawing]);
+  }, [dragState, chart, candleSeries, updateDrawing, estimateTime]);
 
   // Click outside to deselect
   useEffect(() => {

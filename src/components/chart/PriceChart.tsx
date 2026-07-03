@@ -1163,6 +1163,7 @@ export function PriceChart({ symbol, timeframe }: Props) {
         symbol={symbol}
         activeDrawing={activeDrawing}
         renderTick={renderTick}
+        candles={candlesRef.current}
       />
 
       <DrawingToolbar
