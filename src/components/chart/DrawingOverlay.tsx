@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useChartStore, type Drawing, type Point } from "@/lib/store/chart-store";
-import type { IChartApi, ISeriesApi, UTCTimestamp } from "lightweight-charts";
+import type { IChartApi, ISeriesApi, UTCTimestamp, Coordinate, Time } from "lightweight-charts";
 
 interface Props {
   chart: IChartApi | null;
@@ -31,7 +31,6 @@ export function DrawingOverlay({
   candleSeries,
   symbol,
   activeDrawing,
-  renderTick = 0,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const drawings = useChartStore((s) => s.drawings);
@@ -127,15 +126,15 @@ export function DrawingOverlay({
       }
 
       // Convert pixel coordinates back to chart values
-      let newTimeA = ts.coordinateToTime(newAX as any);
-      let newPriceA = candleSeries.coordinateToPrice(newAY as any);
-      let newTimeB = ts.coordinateToTime(newBX as any);
-      let newPriceB = candleSeries.coordinateToPrice(newBY as any);
+      let newTimeA = ts.coordinateToTime(newAX as Coordinate);
+      const newPriceA = candleSeries.coordinateToPrice(newAY as Coordinate);
+      let newTimeB = ts.coordinateToTime(newBX as Coordinate);
+      const newPriceB = candleSeries.coordinateToPrice(newBY as Coordinate);
 
       // If infinite horizontal line, preserve the original time anchor
       if (dragState.type === "hline") {
-        newTimeA = dragState.startA.time as any;
-        newTimeB = dragState.startB.time as any;
+        newTimeA = dragState.startA.time as unknown as Time;
+        newTimeB = dragState.startB.time as unknown as Time;
       }
 
       if (

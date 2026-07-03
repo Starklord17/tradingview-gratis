@@ -617,7 +617,6 @@ export function PriceChart({ symbol, timeframe }: Props) {
       rsi70Ref.current = null;
     }
     requestAnimationFrame(() => recomputePaneOffsets());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indicators.rsi]);
 
   // MACD pane
@@ -667,7 +666,6 @@ export function PriceChart({ symbol, timeframe }: Props) {
       macdHistRef.current = null;
     }
     requestAnimationFrame(() => recomputePaneOffsets());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indicators.macd, indicators.rsi]);
 
   // Visibility — eye toggle (hidden state) + enabled state combined
@@ -693,7 +691,7 @@ export function PriceChart({ symbol, timeframe }: Props) {
   // Sync last values to Zustand alert store so AIPanel can read them
   const setAlertStoreLastValues = useAlertStore((s) => s.setLastValues);
   useEffect(() => {
-    setAlertStoreLastValues(lastValues as any);
+    setAlertStoreLastValues(lastValues as unknown as Parameters<typeof setAlertStoreLastValues>[0]);
   }, [lastValues, setAlertStoreLastValues]);
 
   // Initialize Replay store with chart candles if activated
@@ -814,11 +812,16 @@ export function PriceChart({ symbol, timeframe }: Props) {
           ? "pointer"
           : "";
     }
-    if (tool !== "measure") setMeasure(INITIAL_MEASURE);
+    const handle = requestAnimationFrame(() => {
+      if (tool !== "measure") setMeasure(INITIAL_MEASURE);
+      if (tool !== "trendline" && tool !== "fibonacci") {
+        setActiveDrawing(null);
+      }
+    });
     if (tool !== "trendline" && tool !== "fibonacci") {
-      setActiveDrawing(null);
       activeDrawingRef.current = null;
     }
+    return () => cancelAnimationFrame(handle);
   }, [tool]);
 
   function updateEMAs() {
@@ -914,7 +917,7 @@ export function PriceChart({ symbol, timeframe }: Props) {
     if (c.length === 0) return;
     const cfg = configRef.current;
 
-    let lastBB: any = null;
+    let lastBB: { upper: number; basis: number; lower: number } | null = null;
 
     if (bbBasisRef.current && bbUpperRef.current && bbLowerRef.current) {
       const data = bollingerBands(c, cfg.bbPeriod, cfg.bbStdDev);

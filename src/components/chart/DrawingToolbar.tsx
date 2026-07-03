@@ -1,6 +1,6 @@
 "use client";
 
-import { useChartStore, type Drawing } from "@/lib/store/chart-store";
+import { useChartStore } from "@/lib/store/chart-store";
 import { Trash2 } from "lucide-react";
 import type { IChartApi, ISeriesApi, UTCTimestamp } from "lightweight-charts";
 

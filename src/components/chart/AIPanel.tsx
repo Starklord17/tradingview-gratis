@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useChartStore } from "@/lib/store/chart-store";
 import { useAlertStore } from "@/lib/store/alert-store";
-import { X, Sparkles, Send, Trash2, HelpCircle, Bot, User, Loader2 } from "lucide-react";
+import { X, Sparkles, Send, Trash2, Bot, User, Loader2 } from "lucide-react";
 
 interface Message {
   id: string;
@@ -109,7 +109,7 @@ export function AIPanel() {
   const lastValues = useAlertStore((s) => s.lastValues);
 
   const [inputMsg, setInputMsg] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: "welcome",
       role: "assistant",
@@ -182,11 +182,11 @@ Presioná **Generar Análisis Técnico** abajo para comenzar, o escribí tu preg
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (e: any) {
+    } catch (e: unknown) {
       const errorMsg: Message = {
         id: Math.random().toString(),
         role: "assistant",
-        content: `❌ Error al conectar con el servidor: ${e?.message || "Error desconocido."}`,
+        content: `❌ Error al conectar con el servidor: ${e instanceof Error ? e.message : "Error desconocido."}`,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, errorMsg]);

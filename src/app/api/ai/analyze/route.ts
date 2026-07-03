@@ -119,9 +119,9 @@ Mantené el tono profesional, analítico y en español.`;
     }\n\n#### 3. Soportes y Resistencias\n- **Resistencia Inmediata**: $${(bb?.upper || currentPrice * 1.02).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n- **Soporte Clave**: $${(bb?.lower || currentPrice * 0.98).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n- **Detalle de Volatilidad**: ${bbText}\n\n#### 4. Recomendación / Escenario de Trading\n${recText}`;
 
     return NextResponse.json({ text: mockReport });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error?.message || "Internal server error" },
+      { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
     );
   }

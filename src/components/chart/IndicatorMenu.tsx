@@ -10,11 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useChartStore, type IndicatorKey } from "@/lib/store/chart-store";
+import { useChartStore, type IndicatorKey, type IndicatorConfig } from "@/lib/store/chart-store";
 
 interface Entry {
   key: IndicatorKey;
-  label: (cfg: any) => string;
+  label: (cfg: IndicatorConfig) => string;
   group: string;
 }
 

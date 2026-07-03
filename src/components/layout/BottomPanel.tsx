@@ -13,7 +13,9 @@ export function BottomPanel() {
 
   useEffect(() => {
     let cancelled = false;
-    setT(null);
+    const handle = requestAnimationFrame(() => {
+      setT(null);
+    });
     const load = () => {
       fetchTicker24h(symbol)
         .then((x) => {
@@ -25,6 +27,7 @@ export function BottomPanel() {
     const id = setInterval(load, 5000);
     return () => {
       cancelled = true;
+      cancelAnimationFrame(handle);
       clearInterval(id);
     };
   }, [symbol]);

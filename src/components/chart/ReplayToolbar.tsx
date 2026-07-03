@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useReplayStore } from "@/lib/store/replay-store";
 import { useChartStore } from "@/lib/store/chart-store";
-import { Play, Pause, SkipForward, SkipBack, Scissors, X, HelpCircle } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Scissors, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 

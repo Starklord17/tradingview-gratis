@@ -90,19 +90,22 @@ function SettingsForm({ target, config, onSave, onReset }: FormProps) {
   });
 
   useEffect(() => {
-    setDraft({
-      ema20: config.ema20,
-      ema50: config.ema50,
-      ema200: config.ema200,
-      rsi: config.rsi,
-      macdFast: config.macdFast,
-      macdSlow: config.macdSlow,
-      macdSignal: config.macdSignal,
-      bbPeriod: config.bbPeriod,
-      bbStdDev: config.bbStdDev,
-      supertrendPeriod: config.supertrendPeriod,
-      supertrendMultiplier: config.supertrendMultiplier,
+    const handle = requestAnimationFrame(() => {
+      setDraft({
+        ema20: config.ema20,
+        ema50: config.ema50,
+        ema200: config.ema200,
+        rsi: config.rsi,
+        macdFast: config.macdFast,
+        macdSlow: config.macdSlow,
+        macdSignal: config.macdSignal,
+        bbPeriod: config.bbPeriod,
+        bbStdDev: config.bbStdDev,
+        supertrendPeriod: config.supertrendPeriod,
+        supertrendMultiplier: config.supertrendMultiplier,
+      });
     });
+    return () => cancelAnimationFrame(handle);
   }, [config, target]);
 
   function save() {

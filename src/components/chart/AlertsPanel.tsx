@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAlertStore, type Alert } from "@/lib/store/alert-store";
+import { useAlertStore } from "@/lib/store/alert-store";
 import { useChartStore } from "@/lib/store/chart-store";
 import { X, Plus, Trash2, Bell, Clock, Settings, Volume2, VolumeX, Send, AlertTriangle, HelpCircle, ExternalLink } from "lucide-react";
 
@@ -25,7 +25,10 @@ export function AlertsPanel() {
   // Pre-fill target price when symbol changes or panel opens
   useEffect(() => {
     if (currentPrice > 0 && !targetPrice) {
-      setTargetPrice(currentPrice.toString());
+      const handle = requestAnimationFrame(() => {
+        setTargetPrice(currentPrice.toString());
+      });
+      return () => cancelAnimationFrame(handle);
     }
   }, [currentPrice, targetPrice]);
 
@@ -84,10 +87,10 @@ export function AlertsPanel() {
 
       setTestStatus({ type: "success", msg: "¡Mensaje de prueba enviado!" });
       setTimeout(() => setTestStatus(null), 4000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setTestStatus({
         type: "error",
-        msg: error?.message || "Error de conexión. Verificá tu token de servidor.",
+        msg: error instanceof Error ? error.message : "Error de conexión. Verificá tu token de servidor.",
       });
     }
   };
