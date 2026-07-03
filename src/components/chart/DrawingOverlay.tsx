@@ -266,8 +266,26 @@ export function DrawingOverlay({
       );
     });
 
+    const boxX = Math.min(aX, bX);
+    const boxY = Math.min(aY, bY);
+    const boxW = Math.abs(aX - bX);
+    const boxH = Math.abs(aY - bY);
+
     return (
       <g key={d.id}>
+        {boxW > 0 && boxH > 0 && (
+          <rect
+            x={boxX}
+            y={boxY}
+            width={boxW}
+            height={boxH}
+            fill="transparent"
+            className="cursor-pointer"
+            style={{ pointerEvents: tool === "cursor" || tool === "eraser" ? "auto" : "none" }}
+            onClick={(e) => handleElementClick(e, d.id)}
+            onMouseDown={(e) => startDrag(e, d.id, "all", d.a, d.b)}
+          />
+        )}
         {shadingBoxes}
         {levelLines}
         {/* Diagonal trend guide line */}
@@ -314,7 +332,7 @@ export function DrawingOverlay({
                   x2={bX}
                   y2={bY}
                   stroke="transparent"
-                  strokeWidth={8}
+                  strokeWidth={12}
                   className="cursor-pointer"
                   style={{ pointerEvents: tool === "cursor" || tool === "eraser" ? "auto" : "none" }}
                   onClick={(e) => handleElementClick(e, d.id)}
@@ -342,7 +360,7 @@ export function DrawingOverlay({
                   y1={aY}
                   y2={aY}
                   stroke="transparent"
-                  strokeWidth={8}
+                  strokeWidth={12}
                   className="cursor-pointer"
                   style={{ pointerEvents: tool === "cursor" || tool === "eraser" ? "auto" : "none" }}
                   onClick={(e) => handleElementClick(e, d.id)}
@@ -383,29 +401,49 @@ export function DrawingOverlay({
             {isSelected && tool === "cursor" && d.type !== "hline" && (
               <g className="drawing-element">
                 {/* Handle A */}
-                <circle
-                  cx={aX}
-                  cy={aY}
-                  r={5}
-                  fill="#2962ff"
-                  stroke="#ffffff"
-                  strokeWidth={1.5}
-                  className="cursor-move"
-                  style={{ pointerEvents: "auto" }}
-                  onMouseDown={(e) => startDrag(e, d.id, "a", d.a, d.b)}
-                />
+                <g className="cursor-move">
+                  {/* Invisible target circle */}
+                  <circle
+                    cx={aX}
+                    cy={aY}
+                    r={14}
+                    fill="transparent"
+                    style={{ pointerEvents: "auto" }}
+                    onMouseDown={(e) => startDrag(e, d.id, "a", d.a, d.b)}
+                  />
+                  {/* Visual circle */}
+                  <circle
+                    cx={aX}
+                    cy={aY}
+                    r={6}
+                    fill="#2962ff"
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                    className="pointer-events-none"
+                  />
+                </g>
                 {/* Handle B */}
-                <circle
-                  cx={bX}
-                  cy={bY}
-                  r={5}
-                  fill="#2962ff"
-                  stroke="#ffffff"
-                  strokeWidth={1.5}
-                  className="cursor-move"
-                  style={{ pointerEvents: "auto" }}
-                  onMouseDown={(e) => startDrag(e, d.id, "b", d.a, d.b)}
-                />
+                <g className="cursor-move">
+                  {/* Invisible target circle */}
+                  <circle
+                    cx={bX}
+                    cy={bY}
+                    r={14}
+                    fill="transparent"
+                    style={{ pointerEvents: "auto" }}
+                    onMouseDown={(e) => startDrag(e, d.id, "b", d.a, d.b)}
+                  />
+                  {/* Visual circle */}
+                  <circle
+                    cx={bX}
+                    cy={bY}
+                    r={6}
+                    fill="#2962ff"
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                    className="pointer-events-none"
+                  />
+                </g>
               </g>
             )}
           </g>
