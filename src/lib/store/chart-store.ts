@@ -10,7 +10,9 @@ export type IndicatorKey =
   | "ema200"
   | "rsi"
   | "macd"
-  | "volume";
+  | "volume"
+  | "bb"
+  | "supertrend";
 
 export type DrawingTool =
   | "cursor"
@@ -67,6 +69,10 @@ export interface IndicatorConfig {
   macdFast: number;
   macdSlow: number;
   macdSignal: number;
+  bbPeriod: number;
+  bbStdDev: number;
+  supertrendPeriod: number;
+  supertrendMultiplier: number;
 }
 
 export const DEFAULT_CONFIG: IndicatorConfig = {
@@ -77,6 +83,10 @@ export const DEFAULT_CONFIG: IndicatorConfig = {
   macdFast: 12,
   macdSlow: 26,
   macdSignal: 9,
+  bbPeriod: 20,
+  bbStdDev: 2,
+  supertrendPeriod: 10,
+  supertrendMultiplier: 3,
 };
 
 export const INDICATOR_COLORS: Record<IndicatorKey, string> = {
@@ -86,6 +96,8 @@ export const INDICATOR_COLORS: Record<IndicatorKey, string> = {
   rsi: "#ab47bc",
   macd: "#2962ff",
   volume: "#787b86",
+  bb: "#ab47bc",
+  supertrend: "#26a69a",
 };
 
 export const DEFAULT_WATCHLIST = [
@@ -119,6 +131,7 @@ interface ChartState {
   /** Which indicator's settings dialog is open (null = closed) */
   settingsTarget: IndicatorKey | null;
   selectedDrawingId: string | null;
+  isAIPanelOpen: boolean;
 
   // Persisted Drawings
   drawings: Drawing[];
@@ -137,6 +150,7 @@ interface ChartState {
   clearPriceLines: (symbol?: string) => void;
   setSymbolDialogOpen: (v: boolean) => void;
   setSettingsTarget: (k: IndicatorKey | null) => void;
+  setAIPanelOpen: (isOpen: boolean) => void;
 
   addDrawing: (d: Drawing) => void;
   updateDrawing: (id: string, patch: Partial<Drawing>) => void;
@@ -157,6 +171,8 @@ export const useChartStore = create<ChartState>()(
         rsi: true,
         macd: false,
         volume: true,
+        bb: false,
+        supertrend: false,
       },
       hidden: {
         ema20: false,
@@ -165,6 +181,8 @@ export const useChartStore = create<ChartState>()(
         rsi: false,
         macd: false,
         volume: false,
+        bb: false,
+        supertrend: false,
       },
       config: { ...DEFAULT_CONFIG },
       watchlist: DEFAULT_WATCHLIST,
@@ -173,6 +191,7 @@ export const useChartStore = create<ChartState>()(
       symbolDialogOpen: false,
       settingsTarget: null,
       selectedDrawingId: null,
+      isAIPanelOpen: false,
 
       setSymbol: (symbol) => set({ symbol }),
       setTimeframe: (timeframe) => set({ timeframe }),
@@ -227,6 +246,7 @@ export const useChartStore = create<ChartState>()(
       setSymbolDialogOpen: (symbolDialogOpen) => set({ symbolDialogOpen }),
       setSettingsTarget: (settingsTarget) => set({ settingsTarget }),
       setSelectedDrawingId: (selectedDrawingId) => set({ selectedDrawingId }),
+      setAIPanelOpen: (isAIPanelOpen) => set({ isAIPanelOpen }),
 
       drawings: [],
       addDrawing: (d) =>

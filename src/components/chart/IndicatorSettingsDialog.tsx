@@ -22,6 +22,8 @@ const TITLES: Record<IndicatorKey, string> = {
   rsi: "RSI",
   macd: "MACD",
   volume: "Volumen",
+  bb: "Bandas de Bollinger",
+  supertrend: "SuperTrend",
 };
 
 export function IndicatorSettingsDialog() {
@@ -81,6 +83,10 @@ function SettingsForm({ target, config, onSave, onReset }: FormProps) {
     macdFast: config.macdFast,
     macdSlow: config.macdSlow,
     macdSignal: config.macdSignal,
+    bbPeriod: config.bbPeriod,
+    bbStdDev: config.bbStdDev,
+    supertrendPeriod: config.supertrendPeriod,
+    supertrendMultiplier: config.supertrendMultiplier,
   });
 
   useEffect(() => {
@@ -92,6 +98,10 @@ function SettingsForm({ target, config, onSave, onReset }: FormProps) {
       macdFast: config.macdFast,
       macdSlow: config.macdSlow,
       macdSignal: config.macdSignal,
+      bbPeriod: config.bbPeriod,
+      bbStdDev: config.bbStdDev,
+      supertrendPeriod: config.supertrendPeriod,
+      supertrendMultiplier: config.supertrendMultiplier,
     });
   }, [config, target]);
 
@@ -107,6 +117,16 @@ function SettingsForm({ target, config, onSave, onReset }: FormProps) {
         macdSignal: clamp(draft.macdSignal, 2, 100),
       });
     else if (target === "volume") onSave({});
+    else if (target === "bb")
+      onSave({
+        bbPeriod: clamp(draft.bbPeriod, 2, 200),
+        bbStdDev: clamp(draft.bbStdDev, 1, 10),
+      });
+    else if (target === "supertrend")
+      onSave({
+        supertrendPeriod: clamp(draft.supertrendPeriod, 2, 100),
+        supertrendMultiplier: clamp(draft.supertrendMultiplier, 1, 20),
+      });
   }
 
   return (
@@ -149,6 +169,34 @@ function SettingsForm({ target, config, onSave, onReset }: FormProps) {
           El indicador de volumen no tiene parámetros configurables en esta
           versión.
         </p>
+      )}
+      {target === "bb" && (
+        <div className="grid grid-cols-2 gap-2">
+          <Field
+            label="Período"
+            value={draft.bbPeriod}
+            onChange={(n) => setDraft((d) => ({ ...d, bbPeriod: n }))}
+          />
+          <Field
+            label="Desv. Estándar"
+            value={draft.bbStdDev}
+            onChange={(n) => setDraft((d) => ({ ...d, bbStdDev: n }))}
+          />
+        </div>
+      )}
+      {target === "supertrend" && (
+        <div className="grid grid-cols-2 gap-2">
+          <Field
+            label="Período ATR"
+            value={draft.supertrendPeriod}
+            onChange={(n) => setDraft((d) => ({ ...d, supertrendPeriod: n }))}
+          />
+          <Field
+            label="Multiplicador"
+            value={draft.supertrendMultiplier}
+            onChange={(n) => setDraft((d) => ({ ...d, supertrendMultiplier: n }))}
+          />
+        </div>
       )}
 
       <div className="mt-2 flex items-center justify-between">

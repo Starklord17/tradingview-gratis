@@ -115,3 +115,143 @@ export function macd(
   void slowStartTime;
   return out;
 }
+
+export interface BBPoint {
+  time: number;
+  upper: number;
+  basis: number;
+  lower: number;
+}
+
+export function bollingerBands(
+  candles: Candle[],
+  period = 20,
+  stdDevMultiplier = 2,
+): BBPoint[] {
+  const out: BBPoint[] = [];
+  if (candles.length < period) return out;
+
+  // 1. Calculate SMA (basis)
+  const basisPoints = sma(candles, period);
+  const basisByTime = new Map(basisPoints.map((p) => [p.time, p.value]));
+
+  // 2. Calculate Standard Deviation for each candle
+  for (let i = period - 1; i < candles.length; i++) {
+    const time = candles[i].time;
+    const basis = basisByTime.get(time);
+    if (basis === undefined) continue;
+
+    let sumSqDiff = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      const diff = candles[j].close - basis;
+      sumSqDiff += diff * diff;
+    }
+
+    const stdDev = Math.sqrt(sumSqDiff / period);
+    out.push({
+      time,
+      basis,
+      upper: basis + stdDevMultiplier * stdDev,
+      lower: basis - stdDevMultiplier * stdDev,
+    });
+  }
+
+  return out;
+}
+
+export interface SuperTrendPoint {
+  time: number;
+  value: number;
+  trend: "up" | "down";
+}
+
+export function superTrend(
+  candles: Candle[],
+  period = 10,
+  multiplier = 3,
+): SuperTrendPoint[] {
+  const out: SuperTrendPoint[] = [];
+  if (candles.length < period + 1) return out;
+
+  const tr: number[] = [];
+  const times: number[] = [];
+
+  // TR is high - low for first candle
+  tr.push(candles[0].high - candles[0].low);
+  times.push(candles[0].time);
+
+  for (let i = 1; i < candles.length; i++) {
+    const h = candles[i].high;
+    const l = candles[i].low;
+    const prevClose = candles[i - 1].close;
+    const trVal = Math.max(h - l, Math.abs(h - prevClose), Math.abs(l - prevClose));
+    tr.push(trVal);
+    times.push(candles[i].time);
+  }
+
+  const atr: number[] = new Array(candles.length).fill(0);
+  let sumTr = 0;
+  for (let i = 0; i < period; i++) {
+    sumTr += tr[i];
+  }
+  atr[period - 1] = sumTr / period;
+
+  for (let i = period; i < candles.length; i++) {
+    atr[i] = (atr[i - 1] * (period - 1) + tr[i]) / period;
+  }
+
+  const basicUpper: number[] = [];
+  const basicLower: number[] = [];
+  const finalUpper: number[] = new Array(candles.length).fill(0);
+  const finalLower: number[] = new Array(candles.length).fill(0);
+  const trend: ("up" | "down")[] = new Array(candles.length).fill("up");
+  const supertrendVal: number[] = new Array(candles.length).fill(0);
+
+  for (let i = 0; i < candles.length; i++) {
+    const hl2 = (candles[i].high + candles[i].low) / 2;
+    basicUpper.push(hl2 + multiplier * atr[i]);
+    basicLower.push(hl2 - multiplier * atr[i]);
+  }
+
+  finalUpper[period - 1] = basicUpper[period - 1];
+  finalLower[period - 1] = basicLower[period - 1];
+  supertrendVal[period - 1] = finalUpper[period - 1];
+
+  for (let i = period; i < candles.length; i++) {
+    const prevClose = candles[i - 1].close;
+
+    if (basicUpper[i] < finalUpper[i - 1] || prevClose > finalUpper[i - 1]) {
+      finalUpper[i] = basicUpper[i];
+    } else {
+      finalUpper[i] = finalUpper[i - 1];
+    }
+
+    if (basicLower[i] > finalLower[i - 1] || prevClose < finalLower[i - 1]) {
+      finalLower[i] = basicLower[i];
+    } else {
+      finalLower[i] = finalLower[i - 1];
+    }
+
+    if (candles[i].close > finalUpper[i - 1]) {
+      trend[i] = "up";
+    } else if (candles[i].close < finalLower[i - 1]) {
+      trend[i] = "down";
+    } else {
+      trend[i] = trend[i - 1];
+    }
+
+    if (trend[i] === "up") {
+      supertrendVal[i] = finalLower[i];
+    } else {
+      supertrendVal[i] = finalUpper[i];
+    }
+
+    out.push({
+      time: candles[i].time,
+      value: supertrendVal[i],
+      trend: trend[i],
+    });
+  }
+
+  return out;
+}

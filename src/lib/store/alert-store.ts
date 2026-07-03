@@ -14,17 +14,29 @@ export interface Alert {
   triggeredAt?: number;
 }
 
+export interface LastValues {
+  ema20?: number;
+  ema50?: number;
+  ema200?: number;
+  rsi?: number;
+  macd?: { macd: number; signal: number; histogram: number } | null;
+  bb?: { upper: number; basis: number; lower: number } | null;
+  supertrend?: { value: number; trend: "up" | "down" } | null;
+}
+
 interface AlertState {
   alerts: Alert[];
   telegramChatId: string;
   isAlertsPanelOpen: boolean;
   currentPrice: number;
+  lastValues: LastValues;
   addAlert: (symbol: string, price: number, condition: "above" | "below") => void;
   toggleAlert: (id: string) => void;
   deleteAlert: (id: string) => void;
   setTelegramChatId: (chatId: string) => void;
   setAlertsPanelOpen: (isOpen: boolean) => void;
   setCurrentPrice: (price: number) => void;
+  setLastValues: (values: LastValues) => void;
   checkAlerts: (
     symbol: string,
     currentPrice: number,
@@ -39,6 +51,7 @@ export const useAlertStore = create<AlertState>()(
       telegramChatId: "",
       isAlertsPanelOpen: false,
       currentPrice: 0,
+      lastValues: {},
 
       addAlert: (symbol, price, condition) => {
         const newAlert: Alert = {
@@ -86,6 +99,10 @@ export const useAlertStore = create<AlertState>()(
 
       setCurrentPrice: (price) => {
         set({ currentPrice: price });
+      },
+
+      setLastValues: (lastValues) => {
+        set({ lastValues });
       },
 
       checkAlerts: (symbol, currentPrice, onTrigger) => {
