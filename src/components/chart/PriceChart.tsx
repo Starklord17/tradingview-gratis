@@ -14,7 +14,7 @@ import {
 } from "lightweight-charts";
 import { fetchKlines } from "@/lib/binance/rest";
 import { getBinanceWS } from "@/lib/binance/ws";
-import { ema, rsi, macd } from "@/lib/indicators";
+import { ema, rsi, macd, bollingerBands, superTrend } from "@/lib/indicators";
 import type { Candle, Timeframe } from "@/lib/binance/types";
 import {
   INDICATOR_COLORS,
@@ -89,6 +89,8 @@ interface LastValues {
   macdSignal?: number;
   macdHist?: number;
   volume?: number;
+  bb?: { upper: number; basis: number; lower: number } | null;
+  supertrend?: { value: number; trend: "up" | "down" } | null;
 }
 
 interface PaneOffset {
@@ -112,6 +114,11 @@ export function PriceChart({ symbol, timeframe }: Props) {
   const macdHistRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const candlesRef = useRef<Candle[]>([]);
   const priceLinesMapRef = useRef<Map<string, IPriceLine>>(new Map());
+
+  const bbBasisRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const bbUpperRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const bbLowerRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const supertrendRef = useRef<ISeriesApi<"Line"> | null>(null);
 
   const indicators = useChartStore((s) => s.indicators);
   const hidden = useChartStore((s) => s.hidden);
@@ -301,6 +308,33 @@ export function PriceChart({ symbol, timeframe }: Props) {
     });
     ema200Ref.current = chart.addSeries(LineSeries, {
       color: INDICATOR_COLORS.ema200,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+
+    bbBasisRef.current = chart.addSeries(LineSeries, {
+      color: INDICATOR_COLORS.bb,
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    bbUpperRef.current = chart.addSeries(LineSeries, {
+      color: `${INDICATOR_COLORS.bb}aa`,
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      lineStyle: 2,
+    });
+    bbLowerRef.current = chart.addSeries(LineSeries, {
+      color: `${INDICATOR_COLORS.bb}aa`,
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      lineStyle: 2,
+    });
+    supertrendRef.current = chart.addSeries(LineSeries, {
+      color: INDICATOR_COLORS.supertrend,
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
@@ -631,7 +665,18 @@ export function PriceChart({ symbol, timeframe }: Props) {
     if (macdSignalRef.current) macdSignalRef.current.applyOptions({ visible: v("macd") });
     if (macdHistRef.current) macdHistRef.current.applyOptions({ visible: v("macd") });
     if (volumeSeriesRef.current) volumeSeriesRef.current.applyOptions({ visible: v("volume") });
+    
+    bbBasisRef.current?.applyOptions({ visible: v("bb") });
+    bbUpperRef.current?.applyOptions({ visible: v("bb") });
+    bbLowerRef.current?.applyOptions({ visible: v("bb") });
+    supertrendRef.current?.applyOptions({ visible: v("supertrend") });
   }, [indicators, hidden]);
+
+  // Sync last values to Zustand alert store so AIPanel can read them
+  const setAlertStoreLastValues = useAlertStore((s) => s.setLastValues);
+  useEffect(() => {
+    setAlertStoreLastValues(lastValues as any);
+  }, [lastValues, setAlertStoreLastValues]);
 
   // Recompute indicators when config changes (periods)
   useEffect(() => {
@@ -645,6 +690,14 @@ export function PriceChart({ symbol, timeframe }: Props) {
   useEffect(() => {
     updateMACD();
   }, [config.macdFast, config.macdSlow, config.macdSignal]);
+
+  useEffect(() => {
+    updateBB();
+  }, [config.bbPeriod, config.bbStdDev]);
+
+  useEffect(() => {
+    updateSuperTrend();
+  }, [config.supertrendPeriod, config.supertrendMultiplier]);
 
   // Sync price lines from store to the candle series
   useEffect(() => {
@@ -785,6 +838,62 @@ export function PriceChart({ symbol, timeframe }: Props) {
     }));
   }
 
+  function updateBB() {
+    const c = candlesRef.current;
+    if (c.length === 0) return;
+    const cfg = configRef.current;
+
+    let lastBB: any = null;
+
+    if (bbBasisRef.current && bbUpperRef.current && bbLowerRef.current) {
+      const data = bollingerBands(c, cfg.bbPeriod, cfg.bbStdDev);
+      bbBasisRef.current.setData(
+        data.map((p) => ({ time: p.time as UTCTimestamp, value: p.basis })),
+      );
+      bbUpperRef.current.setData(
+        data.map((p) => ({ time: p.time as UTCTimestamp, value: p.upper })),
+      );
+      bbLowerRef.current.setData(
+        data.map((p) => ({ time: p.time as UTCTimestamp, value: p.lower })),
+      );
+      const lastPoint = data.at(-1);
+      if (lastPoint) {
+        lastBB = { upper: lastPoint.upper, basis: lastPoint.basis, lower: lastPoint.lower };
+      }
+    }
+
+    setLastValues((prev) => ({
+      ...prev,
+      bb: lastBB,
+    }));
+  }
+
+  function updateSuperTrend() {
+    const c = candlesRef.current;
+    if (c.length === 0 || !supertrendRef.current) return;
+    const cfg = configRef.current;
+    const data = superTrend(c, cfg.supertrendPeriod, cfg.supertrendMultiplier);
+
+    supertrendRef.current.setData(
+      data.map((p) => ({
+        time: p.time as UTCTimestamp,
+        value: p.value,
+      })),
+    );
+
+    const lastPoint = data.at(-1);
+    if (lastPoint) {
+      supertrendRef.current.applyOptions({
+        color: lastPoint.trend === "up" ? TV_COLORS.green : TV_COLORS.red,
+      });
+    }
+
+    setLastValues((prev) => ({
+      ...prev,
+      supertrend: lastPoint ? { value: lastPoint.value, trend: lastPoint.trend } : null,
+    }));
+  }
+
   // Load historical data + subscribe live
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -818,6 +927,8 @@ export function PriceChart({ symbol, timeframe }: Props) {
         updateEMAs();
         updateRSI();
         updateMACD();
+        updateBB();
+        updateSuperTrend();
         chartRef.current?.timeScale().fitContent();
         requestAnimationFrame(() => recomputePaneOffsets());
 
@@ -863,6 +974,8 @@ export function PriceChart({ symbol, timeframe }: Props) {
             updateEMAs();
             updateRSI();
             updateMACD();
+            updateBB();
+            updateSuperTrend();
             const prev = arr[arr.length - 2] ?? lastCandle;
             setLastPrice({
               value: k.close,
@@ -1080,6 +1193,28 @@ export function PriceChart({ symbol, timeframe }: Props) {
               onToggleHide={() => toggleHidden("volume")}
               onSettings={() => setSettingsTarget("volume")}
               onRemove={() => removeIndicator("volume")}
+            />
+          )}
+          {indicators.bb && (
+            <IndicatorPill
+              name={`BB ${config.bbPeriod}, ${config.bbStdDev}`}
+              value={lastValues.bb ? `${formatPrice(lastValues.bb.basis)} (${formatPrice(lastValues.bb.lower)} - ${formatPrice(lastValues.bb.upper)})` : undefined}
+              color={INDICATOR_COLORS.bb}
+              hidden={hidden.bb}
+              onToggleHide={() => toggleHidden("bb")}
+              onSettings={() => setSettingsTarget("bb")}
+              onRemove={() => removeIndicator("bb")}
+            />
+          )}
+          {indicators.supertrend && (
+            <IndicatorPill
+              name={`SuperTrend ${config.supertrendPeriod}, ${config.supertrendMultiplier}`}
+              value={lastValues.supertrend ? `${formatPrice(lastValues.supertrend.value)} (${lastValues.supertrend.trend === "up" ? "↑" : "↓"})` : undefined}
+              color={lastValues.supertrend?.trend === "up" ? TV_COLORS.green : TV_COLORS.red}
+              hidden={hidden.supertrend}
+              onToggleHide={() => toggleHidden("supertrend")}
+              onSettings={() => setSettingsTarget("supertrend")}
+              onRemove={() => removeIndicator("supertrend")}
             />
           )}
         </div>

@@ -14,15 +14,7 @@ import { useChartStore, type IndicatorKey } from "@/lib/store/chart-store";
 
 interface Entry {
   key: IndicatorKey;
-  label: (cfg: {
-    ema20: number;
-    ema50: number;
-    ema200: number;
-    rsi: number;
-    macdFast: number;
-    macdSlow: number;
-    macdSignal: number;
-  }) => string;
+  label: (cfg: any) => string;
   group: string;
 }
 
@@ -36,6 +28,16 @@ const ENTRIES: Entry[] = [
     key: "macd",
     group: "Osciladores",
     label: (c) => `MACD (${c.macdFast}, ${c.macdSlow}, ${c.macdSignal})`,
+  },
+  {
+    key: "bb",
+    group: "Volatilidad",
+    label: (c) => `Bandas de Bollinger (${c.bbPeriod}, ${c.bbStdDev})`,
+  },
+  {
+    key: "supertrend",
+    group: "Tendencia",
+    label: (c) => `SuperTrend (${c.supertrendPeriod}, ${c.supertrendMultiplier})`,
   },
 ];
 
