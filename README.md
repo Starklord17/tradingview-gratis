@@ -13,6 +13,11 @@ Plataforma de charts crypto construida sobre los datos públicos de **Binance** 
 - 🔍 **Búsqueda de símbolo** sobre todos los pares USDT del exchange
 - ⏱️ **Multi-timeframe**: 1m / 5m / 15m / 1h / 4h / 1d / 1w
 - 📐 **Indicadores client-side**: EMA 20/50/200, RSI 14, MACD 12/26/9, Volumen
+- 📈 **Indicadores Avanzados**: Bandas de Bollinger y SuperTrend con visualización dinámica y paramétrica
+- 📐 **Herramientas de Dibujo Interactivas**: Líneas de tendencia, horizontales y Retroceso de Fibonacci totalmente arrastrables, editables y persistentes en `localStorage`
+- 🔔 **Alertas de Precio en Tiempo Real**: Notificaciones visuales en el navegador y alertas enviadas automáticamente a **Telegram** en cruces de precio
+- ⏪ **Modo Simulación (Bar Replay)**: Player interactivo para congelar el mercado, retroceder al pasado y reproducir vela por vela a velocidad regulable para backtesting
+- 🤖 **Asistente Técnico con IA**: Chatbot integrado que analiza el estado técnico e indicadores del par de forma inteligente (compatible con Gemini/Claude)
 - 👁️ **Watchlist** con precios y cambio 24h actualizándose en tiempo real
 - 🎨 **Visual idéntica a TradingView** (paleta, fuentes, layout)
 - 💾 **Persistencia** en localStorage (símbolo, timeframe, indicadores)
@@ -106,9 +111,6 @@ Para 1000 velas y panes múltiples el costo es despreciable.
 ## ⚠️ Qué NO incluye (todavía)
 
 - ❌ Pine Script (propietario de TradingView, no se puede clonar)
-- ❌ Drawing tools persistentes (Fibo, trend lines arrastrables)
-- ❌ Replay bar-by-bar
-- ❌ Alertas server-side (siguiente video de la serie)
 - ❌ Trading real (bot con API privada — video 4)
 
 ## 📺 Serie de videos
@@ -116,8 +118,8 @@ Para 1000 velas y panes múltiples el costo es despreciable.
 Este repo es la base de la serie **"TradingView Gratis"**:
 
 1. ✅ **Video 1 — Base**: lo que ves acá
-2. 🔜 **Video 2 — Alertas**: Supabase + Telegram bot
-3. 🔜 **Video 3 — Indicadores AI**: SuperTrend, Ichimoku, custom con Claude
+2. ✅ **Video 2 — Alertas**: Notificaciones Telegram y Toasts
+3. ✅ **Video 3 — Indicadores AI & Replay**: Bollinger, SuperTrend, asistente IA y simulación
 4. 🔜 **Video 4 — Bot que opera**: API privada Binance + ejecución
 
 ## 📄 Licencia
