@@ -85,7 +85,7 @@ export function DrawingToolbar({ chart, candleSeries }: Props) {
                 <button
                   key={c.hex}
                   onClick={() => updateDrawing(drawing.id, { color: c.hex })}
-                  className="group relative flex h-4.5 w-4.5 items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-95"
+                  className="group relative flex h-4.5 w-4.5 items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tv-blue focus-visible:ring-offset-1 focus-visible:ring-offset-tv-panel"
                   style={{ backgroundColor: c.hex }}
                   title={c.label}
                   aria-label={`Color ${c.label}`}
@@ -110,7 +110,7 @@ export function DrawingToolbar({ chart, candleSeries }: Props) {
             {/* Solid */}
             <button
               onClick={() => updateDrawing(drawing.id, { lineStyle: "solid" })}
-              className={`flex h-6 px-1.5 items-center justify-center rounded transition-colors text-xs font-medium hover:bg-tv-panel-hover ${
+              className={`flex h-6 px-1.5 items-center justify-center rounded transition-colors text-xs font-medium hover:bg-tv-panel-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tv-blue focus-visible:ring-offset-1 focus-visible:ring-offset-tv-panel ${
                 activeStyle === "solid"
                   ? "bg-tv-blue/15 text-tv-blue"
                   : "text-tv-text-muted hover:text-tv-text"
@@ -124,7 +124,7 @@ export function DrawingToolbar({ chart, candleSeries }: Props) {
             {/* Dashed */}
             <button
               onClick={() => updateDrawing(drawing.id, { lineStyle: "dashed" })}
-              className={`flex h-6 px-1.5 items-center justify-center rounded transition-colors text-xs font-medium hover:bg-tv-panel-hover ${
+              className={`flex h-6 px-1.5 items-center justify-center rounded transition-colors text-xs font-medium hover:bg-tv-panel-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tv-blue focus-visible:ring-offset-1 focus-visible:ring-offset-tv-panel ${
                 activeStyle === "dashed"
                   ? "bg-tv-blue/15 text-tv-blue"
                   : "text-tv-text-muted hover:text-tv-text"
@@ -146,7 +146,7 @@ export function DrawingToolbar({ chart, candleSeries }: Props) {
           deleteDrawing(drawing.id);
           setSelectedDrawingId(null);
         }}
-        className="flex h-6 w-6 items-center justify-center rounded text-tv-text-muted hover:bg-tv-panel-hover hover:text-tv-red transition-colors"
+        className="flex h-6 w-6 items-center justify-center rounded text-tv-text-muted hover:bg-tv-panel-hover hover:text-tv-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tv-blue focus-visible:ring-offset-1 focus-visible:ring-offset-tv-panel transition-colors"
         title="Eliminar dibujo"
         aria-label="Eliminar dibujo"
       >

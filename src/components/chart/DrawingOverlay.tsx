@@ -44,6 +44,7 @@ export function DrawingOverlay({
   const [dragState, setDragState] = useState<{
     id: string;
     target: "a" | "b" | "all";
+    type: "trendline" | "fibonacci" | "hline";
     startX: number;
     startY: number;
     startA: Point;
@@ -73,11 +74,14 @@ export function DrawingOverlay({
     b: Point
   ) => {
     if (tool !== "cursor") return;
+    const d = drawings.find((x) => x.id === id);
+    if (!d) return;
     e.stopPropagation();
     e.preventDefault();
     setDragState({
       id,
       target,
+      type: d.type,
       startX: e.clientX,
       startY: e.clientY,
       startA: { ...a },
@@ -89,9 +93,6 @@ export function DrawingOverlay({
   // Handle global mouse movement during drag
   useEffect(() => {
     if (!dragState || !chart || !candleSeries) return;
-
-    const drawing = drawings.find((d) => d.id === dragState.id);
-    if (!drawing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const dx = e.clientX - dragState.startX;
@@ -132,7 +133,7 @@ export function DrawingOverlay({
       let newPriceB = candleSeries.coordinateToPrice(newBY as any);
 
       // If infinite horizontal line, preserve the original time anchor
-      if (drawing.type === "hline") {
+      if (dragState.type === "hline") {
         newTimeA = dragState.startA.time as any;
         newTimeB = dragState.startB.time as any;
       }
@@ -163,7 +164,7 @@ export function DrawingOverlay({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [dragState, chart, candleSeries, drawings, updateDrawing]);
+  }, [dragState, chart, candleSeries, updateDrawing]);
 
   // Click outside to deselect
   useEffect(() => {
