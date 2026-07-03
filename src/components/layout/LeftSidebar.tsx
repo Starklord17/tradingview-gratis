@@ -1,6 +1,6 @@
 "use client";
 
-import { MousePointer2, Minus, Ruler, Trash2, Lock } from "lucide-react";
+import { MousePointer2, Minus, Ruler, Trash2, Lock, TrendingUp, Grid3X3, Eraser } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useChartStore, type DrawingTool } from "@/lib/store/chart-store";
 import { cn } from "@/lib/utils";
@@ -21,16 +21,32 @@ const TOOLS: ToolDef[] = [
     hint: "Click en el chart para marcar un precio",
   },
   {
+    key: "trendline",
+    icon: TrendingUp,
+    label: "Línea de tendencia",
+    hint: "Click en dos puntos para trazar una recta",
+  },
+  {
+    key: "fibonacci",
+    icon: Grid3X3,
+    label: "Retroceso de Fibonacci",
+    hint: "Click en dos puntos (alto y bajo) para trazar niveles",
+  },
+  {
     key: "measure",
     icon: Ruler,
     label: "Regla / Medir",
     hint: "Click en dos puntos para medir Δ precio, %, barras y volumen",
   },
+  {
+    key: "eraser",
+    icon: Eraser,
+    label: "Borrador",
+    hint: "Click sobre cualquier dibujo para eliminarlo",
+  },
 ];
 
 const LOCKED = [
-  { label: "Línea de tendencia" },
-  { label: "Fibonacci" },
   { label: "Texto" },
 ];
 
@@ -38,6 +54,7 @@ export function LeftSidebar() {
   const tool = useChartStore((s) => s.tool);
   const setTool = useChartStore((s) => s.setTool);
   const clearPriceLines = useChartStore((s) => s.clearPriceLines);
+  const clearDrawings = useChartStore((s) => s.clearDrawings);
   const symbol = useChartStore((s) => s.symbol);
 
   return (
@@ -71,7 +88,10 @@ export function LeftSidebar() {
 
       <Tooltip>
         <TooltipTrigger
-          onClick={() => clearPriceLines(symbol)}
+          onClick={() => {
+            clearPriceLines(symbol);
+            clearDrawings(symbol);
+          }}
           aria-label="Borrar dibujos"
           className="flex h-8 w-8 items-center justify-center rounded text-tv-text-muted hover:bg-tv-panel-hover hover:text-tv-red"
         >

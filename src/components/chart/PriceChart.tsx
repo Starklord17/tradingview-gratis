@@ -24,6 +24,9 @@ import {
 import { formatPrice, formatVolume } from "@/lib/format";
 import { IndicatorPill } from "./IndicatorPill";
 import { MeasureOverlay } from "./MeasureOverlay";
+import { DrawingOverlay } from "./DrawingOverlay";
+import { DrawingToolbar } from "./DrawingToolbar";
+import { type Drawing, type Point } from "@/lib/store/chart-store";
 
 interface MeasurePoint {
   time: number;
@@ -117,6 +120,11 @@ export function PriceChart({ symbol, timeframe }: Props) {
   const removeIndicator = useChartStore((s) => s.removeIndicator);
   const toggleHidden = useChartStore((s) => s.toggleHidden);
   const setSettingsTarget = useChartStore((s) => s.setSettingsTarget);
+  const addDrawing = useChartStore((s) => s.addDrawing);
+  const setTool = useChartStore((s) => s.setTool);
+  const selectedDrawingId = useChartStore((s) => s.selectedDrawingId);
+  const setSelectedDrawingId = useChartStore((s) => s.setSelectedDrawingId);
+  const deleteDrawing = useChartStore((s) => s.deleteDrawing);
 
   // Refs to avoid recreating subscribeClick on every tool change
   const toolRef = useRef(tool);
@@ -127,6 +135,16 @@ export function PriceChart({ symbol, timeframe }: Props) {
   symbolRef.current = symbol;
   const configRef = useRef(config);
   configRef.current = config;
+  const addDrawingRef = useRef(addDrawing);
+  addDrawingRef.current = addDrawing;
+  const setToolRef = useRef(setTool);
+  setToolRef.current = setTool;
+  const selectedDrawingIdRef = useRef(selectedDrawingId);
+  selectedDrawingIdRef.current = selectedDrawingId;
+  const deleteDrawingRef = useRef(deleteDrawing);
+  deleteDrawingRef.current = deleteDrawing;
+  const setSelectedDrawingIdRef = useRef(setSelectedDrawingId);
+  setSelectedDrawingIdRef.current = setSelectedDrawingId;
 
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [lastPrice, setLastPrice] = useState<{ value: number; pct: number } | null>(null);
@@ -136,6 +154,39 @@ export function PriceChart({ symbol, timeframe }: Props) {
   const [renderTick, setRenderTick] = useState(0);
   const measureRef = useRef(measure);
   measureRef.current = measure;
+
+  const [activeDrawing, setActiveDrawing] = useState<{
+    type: "trendline" | "fibonacci";
+    a: Point;
+    b: Point;
+  } | null>(null);
+  const activeDrawingRef = useRef(activeDrawing);
+  activeDrawingRef.current = activeDrawing;
+
+  // Keyboard listener for deleting selected drawings
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedDrawingIdRef.current
+      ) {
+        const activeEl = document.activeElement;
+        if (
+          activeEl &&
+          (activeEl.tagName === "INPUT" ||
+            activeEl.tagName === "TEXTAREA" ||
+            (activeEl as HTMLElement).isContentEditable)
+        ) {
+          return;
+        }
+        e.preventDefault();
+        deleteDrawingRef.current(selectedDrawingIdRef.current);
+        setSelectedDrawingIdRef.current(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Helper — compute pane top offsets from chart layout
   function recomputePaneOffsets() {
@@ -224,9 +275,51 @@ export function PriceChart({ symbol, timeframe }: Props) {
       if (!param.point || !candleSeriesRef.current) return;
       const price = candleSeriesRef.current.coordinateToPrice(param.point.y);
       if (price === null || !isFinite(price)) return;
-
       if (toolRef.current === "hline") {
-        addPriceLineRef.current(price, symbolRef.current);
+        if (!param.time) return;
+        const time = Number(param.time);
+        const newDrawing: Drawing = {
+          id:
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random()}`,
+          symbol: symbolRef.current,
+          type: "hline",
+          a: { time, price },
+          b: { time, price },
+        };
+        addDrawingRef.current(newDrawing);
+        setToolRef.current("cursor");
+        return;
+      }
+
+      if (toolRef.current === "trendline" || toolRef.current === "fibonacci") {
+        if (!param.time) return;
+        const time = Number(param.time);
+        if (!activeDrawingRef.current) {
+          const drawingGuide = {
+            type: toolRef.current as "trendline" | "fibonacci",
+            a: { time, price },
+            b: { time, price },
+          };
+          setActiveDrawing(drawingGuide);
+          activeDrawingRef.current = drawingGuide;
+        } else {
+          const newDrawing: Drawing = {
+            id:
+              typeof crypto !== "undefined" && "randomUUID" in crypto
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random()}`,
+            symbol: symbolRef.current,
+            type: activeDrawingRef.current.type,
+            a: activeDrawingRef.current.a,
+            b: { time, price },
+          };
+          addDrawingRef.current(newDrawing);
+          setActiveDrawing(null);
+          activeDrawingRef.current = null;
+          setToolRef.current("cursor");
+        }
         return;
       }
 
@@ -248,9 +341,9 @@ export function PriceChart({ symbol, timeframe }: Props) {
           });
         } else {
           setMeasure({
-            phase: "placing",
-            a: { time, price },
-            b: { time, price },
+            phase: "idle",
+            a: null,
+            b: null,
           });
         }
       }
@@ -271,6 +364,25 @@ export function PriceChart({ symbol, timeframe }: Props) {
           setMeasure((prev) =>
             prev.phase === "placing" ? { ...prev, b: { time, price } } : prev,
           );
+        }
+      }
+
+      if (
+        (toolRef.current === "trendline" || toolRef.current === "fibonacci") &&
+        activeDrawingRef.current &&
+        param.point &&
+        param.time &&
+        candleSeriesRef.current
+      ) {
+        const price = candleSeriesRef.current.coordinateToPrice(param.point.y);
+        if (price !== null && isFinite(price)) {
+          const time = Number(param.time);
+          const updated = {
+            ...activeDrawingRef.current,
+            b: { time, price },
+          };
+          setActiveDrawing(updated);
+          activeDrawingRef.current = updated;
         }
       }
 
@@ -527,13 +639,24 @@ export function PriceChart({ symbol, timeframe }: Props) {
     }
   }, [priceLines, symbol]);
 
-  // Cursor style when drawing tools are active + reset measure on tool change
+  // Cursor style when drawing tools are active + reset measure/drawings on tool change
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.style.cursor =
-        tool === "hline" || tool === "measure" ? "crosshair" : "";
+        tool === "hline" ||
+        tool === "trendline" ||
+        tool === "fibonacci" ||
+        tool === "measure"
+          ? "crosshair"
+          : tool === "eraser"
+          ? "pointer"
+          : "";
     }
     if (tool !== "measure") setMeasure(INITIAL_MEASURE);
+    if (tool !== "trendline" && tool !== "fibonacci") {
+      setActiveDrawing(null);
+      activeDrawingRef.current = null;
+    }
   }, [tool]);
 
   function updateEMAs() {
@@ -784,6 +907,19 @@ export function PriceChart({ symbol, timeframe }: Props) {
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
       {measureRender}
+
+      <DrawingOverlay
+        chart={chartRef.current}
+        candleSeries={candleSeriesRef.current}
+        symbol={symbol}
+        activeDrawing={activeDrawing}
+        renderTick={renderTick}
+      />
+
+      <DrawingToolbar
+        chart={chartRef.current}
+        candleSeries={candleSeriesRef.current}
+      />
 
       {/* Top-left of main pane: symbol info + OHLC + Volume pill + EMA pills */}
       <div

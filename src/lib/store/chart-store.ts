@@ -12,7 +12,46 @@ export type IndicatorKey =
   | "macd"
   | "volume";
 
-export type DrawingTool = "cursor" | "hline" | "measure" | "eraser";
+export type DrawingTool =
+  | "cursor"
+  | "hline"
+  | "trendline"
+  | "fibonacci"
+  | "measure"
+  | "eraser";
+
+export interface Point {
+  time: number; // UTC timestamp in seconds
+  price: number;
+}
+
+export interface BaseDrawing {
+  id: string;
+  symbol: string;
+  type: "trendline" | "fibonacci" | "hline";
+  color?: string;
+  lineStyle?: "solid" | "dashed" | "dotted";
+}
+
+export interface TrendlineDrawing extends BaseDrawing {
+  type: "trendline";
+  a: Point;
+  b: Point;
+}
+
+export interface FibonacciDrawing extends BaseDrawing {
+  type: "fibonacci";
+  a: Point;
+  b: Point;
+}
+
+export interface HLineDrawing extends BaseDrawing {
+  type: "hline";
+  a: Point;
+  b: Point;
+}
+
+export type Drawing = TrendlineDrawing | FibonacciDrawing | HLineDrawing;
 
 export interface PriceLine {
   id: string;
@@ -79,6 +118,10 @@ interface ChartState {
   symbolDialogOpen: boolean;
   /** Which indicator's settings dialog is open (null = closed) */
   settingsTarget: IndicatorKey | null;
+  selectedDrawingId: string | null;
+
+  // Persisted Drawings
+  drawings: Drawing[];
 
   // Actions
   setSymbol: (s: string) => void;
@@ -94,6 +137,12 @@ interface ChartState {
   clearPriceLines: (symbol?: string) => void;
   setSymbolDialogOpen: (v: boolean) => void;
   setSettingsTarget: (k: IndicatorKey | null) => void;
+
+  addDrawing: (d: Drawing) => void;
+  updateDrawing: (id: string, patch: Partial<Drawing>) => void;
+  deleteDrawing: (id: string) => void;
+  clearDrawings: (symbol: string) => void;
+  setSelectedDrawingId: (id: string | null) => void;
 }
 
 export const useChartStore = create<ChartState>()(
@@ -123,6 +172,7 @@ export const useChartStore = create<ChartState>()(
       priceLines: [],
       symbolDialogOpen: false,
       settingsTarget: null,
+      selectedDrawingId: null,
 
       setSymbol: (symbol) => set({ symbol }),
       setTimeframe: (timeframe) => set({ timeframe }),
@@ -176,6 +226,27 @@ export const useChartStore = create<ChartState>()(
         })),
       setSymbolDialogOpen: (symbolDialogOpen) => set({ symbolDialogOpen }),
       setSettingsTarget: (settingsTarget) => set({ settingsTarget }),
+      setSelectedDrawingId: (selectedDrawingId) => set({ selectedDrawingId }),
+
+      drawings: [],
+      addDrawing: (d) =>
+        set((state) => ({
+          drawings: [...state.drawings, d],
+        })),
+      updateDrawing: (id, patch) =>
+        set((state) => ({
+          drawings: state.drawings.map((d) =>
+            d.id === id ? ({ ...d, ...patch } as Drawing) : d
+          ),
+        })),
+      deleteDrawing: (id) =>
+        set((state) => ({
+          drawings: state.drawings.filter((d) => d.id !== id),
+        })),
+      clearDrawings: (symbol) =>
+        set((state) => ({
+          drawings: state.drawings.filter((d) => d.symbol !== symbol),
+        })),
     }),
     {
       name: "tv-gratis-chart-state",
@@ -186,6 +257,7 @@ export const useChartStore = create<ChartState>()(
         hidden: s.hidden,
         config: s.config,
         watchlist: s.watchlist,
+        drawings: s.drawings,
       }),
     },
   ),
